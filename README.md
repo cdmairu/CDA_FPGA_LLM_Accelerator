@@ -1,414 +1,189 @@
-# CDA_FPGA_LLM_Accelerator
+# CDA FPGA LLM Accelerator — Matrix Multiplication Demo
 
-Project idea
+A complete FPGA-based matrix-multiplication accelerator targeting the
+**Tang Primer 20K** (GW2A-18, Gowin toolchain) with a PC host Python stack.
 
-* * *
+---
 
-## Thesis:
+## Repository Layout
 
-> *This project designs and evaluates a small fixed‑size matrix‑multiplication accelerator on a low‑cost FPGA board (Tang Primer 20K) and compares its performance and resource use against a CPU implementation on an external computer. Because dense matrix multiplication is the core operation in many ML and LLM workloads, the results indicate whether such a cheap FPGA could serve as a practical “helper” for heavy linear‑algebra kernels. Which directly applies to various deployments of both LLMs and Neural Networks in many embedded, IoT, and infrastructural systems worldwide.*
+```
+fpga_matmul/
+├── rtl/
+│   ├── uart_rx.v        — UART receiver (8N1, parameterised baud)
+│   ├── uart_tx.v        — UART transmitter
+│   ├── matmul_core.v    — Parameterised sequential MAC engine (N=4/8/16)
+│   ├── uart_ctrl.v      — Protocol controller (glues UART ↔ matmul_core)
+│   └── top.v            — Chip top-level (clock, LED heartbeat)
+├── sim/
+│   ├── tb_matmul_core.v — Self-checking testbench for matmul_core
+│   └── tb_uart.v        — UART TX→RX loopback testbench
+├── constraints/
+│   ├── top.cst          — Physical pin constraints (Gowin)
+│   └── top.sdc          — Timing constraints
+└── host/
+    ├── cpu_baseline.py  — Measure CPU-only matmul time
+    ├── fpga_host.py     — Send matrices to FPGA, verify, benchmark
+    ├── fpga_sim.py      — Software FPGA simulator (no hardware needed)
+    └── analyze_results.py — Tables + plots from benchmark data
+```
 
-* * *
+---
 
+## Quick Start
 
+### 1. Simulate (no hardware)
 
-- Justification:
-    - Dense matrix multiplication is the core building block of fully connected and attention layers in modern ML/LLM models.
-    
-    - Arguing that:
-        
-        - If even this small FPGA wins on basic GEMM, larger or more optimized designs could serve as helpers for LLM inference on constrained systems.
-    - Emphasize this is a first step, not a full LLM accelerator.\
-    - If a microcontroller‑class system repeatedly multiplies tiny matrices (e.g., in control, tiny filters, very small neural nets), a dedicated matmul           block like yours could realistically offload that work and free CPU cycles.
-        
-    - In that context, the matmul IP core (not the UART harness) would be integrated on the same chip or fabric as the CPU.
+```bash
+# Install Icarus Verilog
+sudo apt install iverilog   # Ubuntu / WSL
 
-   In other words: the *core* being desinged (the matmul engine) is absolutely the kind of building block real accelerators use; the small sizes and UART       interface just make it a student‑scale demonstration rather than a production‑scale product.
+# Compile and run matmul testbench
+cd sim
+iverilog -o sim_matmul tb_matmul_core.v ../rtl/matmul_core.v
+vvp sim_matmul
 
+# Compile and run UART loopback testbench
+iverilog -o sim_uart tb_uart.v ../rtl/uart_rx.v ../rtl/uart_tx.v
+vvp sim_uart
+```
 
-## High-Level Roadmap:
+Expected output:
+```
+--- Test 1: I x B ---   cycles=84
+--- Test 2: 1s x 1s --- cycles=84
+ALL TESTS PASSED
+```
 
-## Phase 1 – Baseline CPU and Fixed Sizes
+### 2. Synthesise (Gowin IDE)
 
-1.  Choose matrix sizes:
-    
-    - Start with 4×4 and 8×8; optionally 16×16.
-2.  Implement CPU baseline:
-    
-    - Small C or Python program that does integer or fixed‑point matrix multiply and measures time (run many iterations and average).
-3.  Decide numeric format:
-    
-    - For simplicity: 16‑bit signed integers with 32‑bit accumulation.
+1. Create a new project for device `GW2A-LV18PG256C8/I7`.
+2. Add all `rtl/*.v` files.
+3. Add `constraints/top.cst` and `constraints/top.sdc`.
+4. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
+5. Run Synthesis → Place & Route → Program Device.
 
-## Phase 2 – FPGA Matrix Multiplier Core (On‑Chip Only)
+Check the synthesis report for:
+- LUT count
+- DSP block count
+- Max frequency (should be well above 27 MHz for N=4/8)
 
-4.  Implement a **combinational 4×4 or 8×8 matrix multiplier** as in classic student projects.[](http://www.seas.ucla.edu/~baek/FPGA.pdf)
-    
-    - One multiply‑accumulate tree per output element, or a small systolic structure.
-        
-    - Use BRAM/registers for A and B; compute C in one or a few cycles.
-        
-5.  Add a small controller:
-    
-    - FSM to:
-        
-        - Load A and B from an input buffer (written by UART).
-            
-        - Trigger the multiply.
-            
-        - Store C in an output buffer.
-            
-6.  Add a cycle counter:
-    
-    - Count cycles from “start computation” to “done” to get FPGA latency.
+### 3. Run CPU Baseline
 
-## Phase 3 – PC–FPGA Communication
+```bash
+cd host
+pip install numpy
+python cpu_baseline.py
+```
 
-7.  Implement UART receiver/transmitter on FPGA:
-    
-    - Receive:
-        
-        - A, B matrices as raw bytes.
-            
-        - Maybe a single “start” command byte.
-            
-    - Transmit:
-        
-        - Result matrix C as raw bytes.
-            
-        - Optionally the cycle count.
-            
-8.  Write a Python script on PC:
-    
-    - Generate random matrices.
-        
-    - Send them to FPGA over serial.
-        
-    - Receive C back.
-        
-    - Verify C vs. CPU result.
-        
-    - Measure:
-        
-        - Pure compute time (using cycle counter from FPGA).
-            
-        - End‑to‑end time including serial overhead (for realism).
-            
+### 4. Run with Real FPGA
 
-&nbsp;
+```bash
+pip install pyserial numpy
+python fpga_host.py --port /dev/ttyUSB0 --N 4 --iters 20
+```
 
-* * *
+Common ports:
+- Linux: `/dev/ttyUSB0` or `/dev/ttyACM0`
+- macOS: `/dev/cu.usbserial-XXXX`
+- Windows: `COM3` (check Device Manager)
 
-## Mid-Level Roadmap:
+### 5. Run with Software Simulator (no hardware)
 
-## Phase 1 – CPU Baseline
+```bash
+# Linux/macOS – create virtual serial pair
+sudo apt install socat
+socat -d -d PTY,raw,echo=0,link=/tmp/fpga_sim PTY,raw,echo=0,link=/tmp/fpga_host &
 
-1\. Write a reference CPU matrix‑multiply (Python or C)
+# Terminal 1
+python fpga_sim.py --port /tmp/fpga_sim --N 4
 
-For each size N∈{4,8,16}:
+# Terminal 2
+python fpga_host.py --port /tmp/fpga_host --N 4 --iters 5
+```
 
-4.  - Implement:
-        
-        - Naive triple‑loop:
-            
-            - `for i in range(N)`
-                
-            - `for j in range(N)`
-                
-            - `for k in range(N)`
-                
-                - `C[i][j] += A[i][k] * B[k][j]`
-    - Use 16‑bit inputs and 32‑bit outputs (e.g., `int16` and `int32` in NumPy, or `int16_t` / `int32_t` in C).
-        
-        &nbsp;
-        
-        2\. Add timing on CPU
-        
-        - In Python:
-            
-            - Use `time.perf_counter()` or similar, run each matrix multiply many times (e.g., 10,000 iterations) and divide total time by iterations.
-        - In C:
-            
-            - Use `clock_gettime`, `chrono`, or similar.
-                
-            - &nbsp;
-                
-                3\. Store baseline results
-                
-            - - For each size:
-                    
-                    ```
-                    - Average time per multiply on CPU.
-                    ```
-                    
-                    - Keep these numbers in a table for the report.
-        
-        &nbsp;
-        
+### 6. Analyze and Plot Results
 
-* * *
+```bash
+python analyze_results.py --demo          # synthetic data
+python analyze_results.py --results my_results.json  # your data
+```
 
-## Phase 2 – FPGA Matrix‑Multiplier Core (On‑Chip Only)
+---
 
-## 2.1 Architecture decisions
+## Design Notes
 
-7.  Choose a microarchitecture per size
-    
-    For 4×4 and 8×8:
-    
-    - **Simplest option (fine for this project):**
-        
-        - Sequential, single‑MAC design:
-            
-            - Reuse a single multiplier‑adder: compute each `C[i][j]` over N cycles, then move to next element.
-                
-            - Total cycles ≈ N3 plus overhead.
-                
-    - **Alternative (still simple but faster):**
-        
-        - One multiply‑accumulate unit per output element:
-            
-            - For 4×4: 16 MAC units in parallel.
-                
-            - For 8×8: 64 MAC units (may be heavy on DSPs/LUTs, so you might start with 4×4 this way, then scale as resources allow).
-                
-    
-    To keep it very manageable, a sequential MAC is usually enough and easier on resources.
-    
-8.  Memory organization on FPGA
-    
-    - Store A, B, C in on‑chip memory:
-        
-        - A: BRAM/regs with N×N 16‑bit elements.
-            
-        - B: same as A.
-            
-        - C: N×N 32‑bit elements.
-            
-    - Use simple address mapping:
-        
-        - Row‑major: `addr = i*N + j`.
+### FPGA Architecture
 
-## 3.2 RTL implementation
+```
+PC ──UART──► [uart_rx] ──bytes──► [uart_ctrl FSM]
+                                        │
+                              ┌─────────┴──────────┐
+                              │   matmul_core       │
+                              │  (sequential MAC)   │
+                              │  Latency ≈ N³ clks  │
+                              └─────────┬──────────┘
+                                        │
+PC ◄──UART── [uart_tx] ◄──bytes── [uart_ctrl FSM]
+```
 
-9.  Implement the core MAC and control FSM
-    
-    - MAC unit:
-        
-        - Inputs: 16‑bit `a`, 16‑bit `b`; 32‑bit accumulator `acc`.
-            
-        - Operation per cycle: `acc_next = acc + a*b`.
-            
-    - Controller FSM:
-        
-        - States might include:
-            
-            - `IDLE`
-                
-            - `LOAD_AB` (from UART buffers into internal memories)
-                
-            - `COMPUTE` (nested i, j, k loops implemented as counters)
-                
-            - `WRITE_C` (to output buffer)
-                
-            - `DONE`
-                
-        - In `COMPUTE`:
-            
-            - Iterate counters i, j, k.
-                
-            - For each (i, j, k):
-                
-                - Read `A[i][k]` and `B[k][j]` from on‑chip memory.
-                    
-                - Feed them into MAC.
-                    
-                - When `k` completes, write final `C[i][j]` into C memory and move to next (i, j).
-                    
-10. Add cycle counter
-    
+**matmul_core** iterates three nested counters (i, j, k) and feeds one
+`A[i][k] * B[k][j]` into a 32-bit accumulator each clock cycle.
+Total compute cycles ≈ N³ + N² (write-back overhead).
 
-- 32‑ or 64‑bit counter register driven by `clk`.
-    
-- On a `start` signal:
-    
-    - Zero the counter.
-- While in COMPUTE:
-    
-    - Increment each cycle.
-- On completion:
-    
-    - Latch the final value into a `cycles` register accessible to the UART side, or store alongside C.
+### Protocol
 
-11. Simulate
+| Direction | Content | Size |
+|-----------|---------|------|
+| PC → FPGA | Command byte `0x01` | 1 B |
+| PC → FPGA | Matrix A (int16 LE, row-major) | N×N×2 B |
+| PC → FPGA | Matrix B (int16 LE, row-major) | N×N×2 B |
+| FPGA → PC | Matrix C (int32 LE, row-major) | N×N×4 B |
+| FPGA → PC | Cycle count (uint32 LE) | 4 B |
 
-- Write a testbench:
-    
-    - Hard‑code small A and B for 4×4, known expected C.
-        
-    - Toggle `start`, wait for `done`.
-        
-    - Check C contents and cycle count.
-        
-- Fix any off‑by‑one or address bugs before going to hardware.
-    
+### Expected Performance (27 MHz clock, 115200 baud)
 
-* * *
+| N | FPGA cycles | FPGA time | UART overhead | CPU naive |
+|---|-------------|-----------|---------------|-----------|
+| 4 | ~84 | ~3.1 µs | ~3.0 ms | ~4 µs |
+| 8 | ~584 | ~21.6 µs | ~9.4 ms | ~42 µs |
+| 16 | ~4368 | ~162 µs | ~36 ms | ~580 µs |
 
-## 4\. Phase 3 – PC–FPGA Communication over UART
+> **Note:** UART dominates end-to-end time. The *compute-only* speedup (from
+> the cycle counter) is what shows the FPGA advantage. A higher baud rate
+> (e.g. 921600) or SPI/parallel bus would make end-to-end competitive too.
 
-## 4.1 UART interface on FPGA
+### Scaling to N=16
 
-12. Implement UART receiver and transmitter
+N=16 requires 256 MAC units or 4096 sequential cycles.  
+With a sequential design the resource usage stays minimal (~100 LUTs, a few
+BRAMs, 1 DSP). Synthesis at 27 MHz should close timing easily.
 
-- Use a known UART core (or write a small one) configured to a standard baud rate (e.g., 115200 or higher if reliable).
-    
-- Expose:
-    
-    - RX byte stream to a small command parser.
-        
-    - TX byte stream for sending results back.
-        
+For the DSP-parallel design (16 MACs in parallel), you'd need 16–64 DSP18
+blocks – the GW2A-18 has 48, so N=4 parallel fits comfortably.
 
-13. Define a minimal protocol (fixed‑size, no parsing headaches)
+---
 
-For an N×N matrix with 16‑bit entries:
+## Troubleshooting
 
-- PC to FPGA:
-    
-    - Send a “command byte” (e.g., `0x01` = compute).
-        
-    - Send A:
-        
-        - N×N entries × 2 bytes each = `N*N*2` bytes.
-            
-        - Order: row‑major.
-            
-    - Send B:
-        
-        - Same size and order.
-- FPGA to PC:
-    
-    - After computation:
-        
-        - Send C:
-            
-            - N×N entries × 4 bytes each (32‑bit).
-        - Send cycle count:
-            
-            - 4 or 8 bytes.
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| No RX data from FPGA | Wrong port / baud | Check Device Manager / `dmesg` |
+| Mismatched results | Byte-order bug | Verify LE packing in host script |
+| Simulation hangs | Off-by-one in FSM | Check `N-1` comparisons in matmul_core |
+| Synthesis fails timing | Clock too high | Lower to 27 MHz (already default) |
+| LED not blinking | Wrong pin in .cst | Check board schematic |
 
-You can keep it strictly fixed‑length: FPGA assumes that after the command byte, exactly `N*N*2` bytes for A and then `N*N*2` bytes for B will arrive.
+---
 
-14. Command/receive logic on FPGA
+## Dependencies
 
-- Simple state machine:
-    
-    - `WAIT_CMD` → receive 1 byte (command).
-        
-    - If command == `0x01`:
-        
-        - Receive A bytes into a BRAM or register file.
-            
-        - Receive B bytes similarly.
-            
-        - Assert `start` to the compute core.
-            
-        - Wait for `done`.
-            
-        - Then stream out C followed by cycle count via UART TX.
-            
+**Hardware:** Tang Primer 20K, USB cable, PC with Gowin IDE.
 
-* * *
+**Python:** `numpy`, `pyserial`, `matplotlib` (optional for plots).
 
-## 4.2 Host (PC) script
+```bash
+pip install numpy pyserial matplotlib
+```
 
-15. Python script structure
-
-- Use `pyserial` (or similar) to open the serial port at the same baud rate.
-    
-- For each matrix size N:
-    
-    - Generate random A, B in int16.
-        
-    - Pack them into little‑endian 2‑byte values.
-        
-    - Send:
-        
-        - `0x01`
-            
-        - A bytes
-            
-        - B bytes
-            
-    - Read:
-        
-        - C bytes (N×N×4 bytes).
-            
-        - Cycle count bytes.
-            
-
-16. CPU reference and correctness check
-
-- In the same script:
-    
-    - Compute `C_cpu = A @ B` using NumPy (int32).
-        
-    - Compare `C_fpga` and `C_cpu` element‑wise.
-        
-    - Assert they match; print an error if any mismatch.
-        
-
-17. Timing
-
-- FPGA time:
-    
-    - Use cycle count from FPGA and the known clock frequency of your design (e.g., 50 MHz or whatever you synthesized to).
-        
-    - `t_fpga = cycles / fclk`.
-        
-- CPU time:
-    
-    - Use Python timing (e.g., `time.perf_counter()`) over many iterations or a separate C compiled benchmark.
-- Optionally measure:
-    
-    - End‑to‑end time including UART transfer to show impact of communication overhead.
-
-* * *
-
-## 5\. Evaluation and Reporting
-
-18. Gather performance data
-
-For each N (4, 8, optional 16):
-
-- Record:
-    
-    - CPU time per GEMM.
-        
-    - FPGA compute time per GEMM (from cycle counter).
-        
-    - FPGA end‑to‑end time including UART, if measured.
-        
-    - Resource usage from synthesis:
-        
-        - LUTs, registers, BRAMs, DSPs.
-    - Max frequency (fclk) achieved by the FPGA design.
-        
-
-19. Basic analysis
-
-- Compute speedup:
-    
-    - `speedup_compute_only = CPU_time / FPGA_compute_time`.
-        
-    - Optionally: `speedup_end_to_end = CPU_time / FPGA_e2e_time`.
-        
-- Discuss:
-    
-    - When does FPGA win strongly (larger N)?
-        
-    - How communication overhead affects real‑world benefits.
-        
-
-* * *
+**Simulation:** [Icarus Verilog](https://github.com/steveicarus/iverilog) (free, cross-platform).

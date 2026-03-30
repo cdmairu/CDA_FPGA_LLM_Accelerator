@@ -1,0 +1,28 @@
+//==============================================================================
+// top.cst  –  Physical Constraints for Tang Primer 20K (GW2A-18)
+//
+//  Adjust pin numbers to match your specific board revision and
+//  USB-UART bridge wiring.  The locations below are typical for the
+//  Sipeed Tang Primer 20K Dock board.
+//==============================================================================
+
+// ----------- Clock -----------
+IO_LOC  "clk"      4;
+IO_PORT "clk"      PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
+// ----------- Reset (active-low button) -----------
+IO_LOC  "rst_n"    88;
+IO_PORT "rst_n"    PULL_MODE=UP   IO_TYPE=LVCMOS33;
+
+// ----------- UART (via on-board CH343 USB-UART bridge) -----------
+//   TX from FPGA perspective = FPGA drives this line
+//   RX from FPGA perspective = FPGA receives on this line
+IO_LOC  "uart_rx"  25;
+IO_PORT "uart_rx"  PULL_MODE=UP   IO_TYPE=LVCMOS33;
+
+IO_LOC  "uart_tx"  26;
+IO_PORT "uart_tx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
+// ----------- Heartbeat LED -----------
+IO_LOC  "led"      10;
+IO_PORT "led"      PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
