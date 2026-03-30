@@ -1,44 +1,36 @@
 // =============================================================================
-// top.v  –  Top-level for Tang Primer 20K
-//
-//  Board details (GW2A-18):
-//    - 27 MHz on-board oscillator on pin IO_LOC "4"  (check your .cst)
-//    - Active-low reset button
-//    - UART via on-board USB-UART bridge
-//
-//  Change N to 8 or 16 for larger matrices (resynthesize).
+// top.v  –  Top-level for Tang Primer 20K  (Gowin/Verilog-2001 clean)
 // =============================================================================
 module top #(
-    parameter N         = 4,          // <-- change to 8 or 16
+    parameter N         = 4,
     parameter CLK_FREQ  = 27_000_000,
     parameter BAUD_RATE = 115200
 )(
-    input  wire clk,          // 27 MHz oscillator
-    input  wire rst_n,        // active-low button
+    input  wire clk,
+    input  wire rst_n,
     input  wire uart_rx,
     output wire uart_tx,
-    output wire led            // heartbeat LED
+    output wire led
 );
 
-// Simple heartbeat: toggle every ~0.5 s
-reg [23:0] hb_cnt;
+// Heartbeat counter – widened to 25 bits so +1 never truncates into 24 bits
+reg [24:0] hb_cnt;
 reg        hb_led;
 assign led = hb_led;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        hb_cnt <= 0;
-        hb_led <= 0;
+        hb_cnt <= 25'd0;
+        hb_led <= 1'b0;
     end else begin
-        hb_cnt <= hb_cnt + 1;
-        if (hb_cnt == 24'd13_500_000) begin
-            hb_cnt <= 0;
+        if (hb_cnt == 25'd13_500_000) begin
+            hb_cnt <= 25'd0;
             hb_led <= ~hb_led;
-        end
+        end else
+            hb_cnt <= hb_cnt + 25'd1;
     end
 end
 
-// Main controller
 uart_ctrl #(
     .N        (N),
     .CLK_FREQ (CLK_FREQ),

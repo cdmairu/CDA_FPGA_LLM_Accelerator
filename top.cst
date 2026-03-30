@@ -1,28 +1,28 @@
 //==============================================================================
-// top.cst  –  Physical Constraints for Tang Primer 20K (GW2A-18)
+// top.cst -- Physical Constraints for Tang Primer 20K (GW2A-LV18PG256C8/I7)
 //
-//  Adjust pin numbers to match your specific board revision and
-//  USB-UART bridge wiring.  The locations below are typical for the
-//  Sipeed Tang Primer 20K Dock board.
+//  Pad names use the IOxNNy format required by Gowin IDE.
+//  Cross-check with Sipeed schematic for your exact carrier board revision.
+//  Open the Gowin Floorplanner to confirm locations if synthesis still errors.
 //==============================================================================
 
-// ----------- Clock -----------
-IO_LOC  "clk"      4;
-IO_PORT "clk"      PULL_MODE=NONE IO_TYPE=LVCMOS33;
+// 27 MHz on-board crystal oscillator
+IO_LOC  "clk"     "IOT6A";
+IO_PORT "clk"     IO_TYPE=LVCMOS33 PULL_MODE=NONE;
 
-// ----------- Reset (active-low button) -----------
-IO_LOC  "rst_n"    88;
-IO_PORT "rst_n"    PULL_MODE=UP   IO_TYPE=LVCMOS33;
+// Active-low reset button (S1 on Dock board)
+IO_LOC  "rst_n"   "IOB50B";
+IO_PORT "rst_n"   IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
-// ----------- UART (via on-board CH343 USB-UART bridge) -----------
-//   TX from FPGA perspective = FPGA drives this line
-//   RX from FPGA perspective = FPGA receives on this line
-IO_LOC  "uart_rx"  25;
-IO_PORT "uart_rx"  PULL_MODE=UP   IO_TYPE=LVCMOS33;
+// UART via on-board CH343P USB-UART bridge
+//   uart_rx = data coming IN to the FPGA from USB host
+IO_LOC  "uart_rx" "IOT17B";
+IO_PORT "uart_rx" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
-IO_LOC  "uart_tx"  26;
-IO_PORT "uart_tx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+//   uart_tx = data going OUT from the FPGA to USB host
+IO_LOC  "uart_tx" "IOT17A";
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=NONE;
 
-// ----------- Heartbeat LED -----------
-IO_LOC  "led"      10;
-IO_PORT "led"      PULL_MODE=NONE IO_TYPE=LVCMOS33 DRIVE=8;
+// Heartbeat LED (active-low on-board LED0)
+IO_LOC  "led"     "IOB14B";
+IO_PORT "led"     IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8;
