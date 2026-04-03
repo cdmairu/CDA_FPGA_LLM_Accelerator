@@ -32,14 +32,7 @@ fpga_matmul/
 
 ## Quick Start
 
-### 1. Install Gowin EDA
-
-- Go to <https://www.gowinsemi.com/en/support/download_eda>
-- ~~Click the "Software for Linux" tab~~
-- Download the Education version (no license is required)
-- Accept licenses and install USB drivers
-
-### 2. Simulate (no hardware)
+### 1. Simulate (no hardware)
 
 ```bash
 # Install Icarus Verilog
@@ -56,29 +49,25 @@ vvp sim_uart
 ```
 
 Expected output:
-```
+
+```text
 --- Test 1: I x B ---   cycles=84
 --- Test 2: 1s x 1s --- cycles=84
 ALL TESTS PASSED
 ```
 
-### 3. Synthesise (Gowin IDE)
+### 2. Synthesise (Gowin IDE)
 
-1. Create a new project for device [`GW2A-LV18PG256C8/I7`](https://wiki.sipeed.com/hardware/en/tang/tang-primer-20k/primer-20k.html).
-2. Right click `GW2A-LV18PG256C8/I7` --> Add Files...
-3. Add all `rtl/*.v` files.  Copy them into the source directory (else the path is really long and hard to read in the Design window)
-4. Add `constraints/top.cst` and `constraints/top.sdc`.
-5. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
-6. In the top toolbar, click Run Synthesis, then Place & Route
-7. Tools --> Programmer
-8. Plug in USB cable from computer to USB-JTAG port
+1. see [INSTRUCTIONS.md](INSTRUCTIONS.md)
+2. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
 
 Check the synthesis report for:
+
 - LUT count
 - DSP block count
 - Max frequency (should be well above 27 MHz for N=4/8)
 
-### 4. Run CPU Baseline
+### 3. Run CPU Baseline
 
 ```bash
 cd host
@@ -86,7 +75,7 @@ pip install numpy
 python cpu_baseline.py
 ```
 
-### 5. Run with Real FPGA
+### 4. Run with Real FPGA
 
 ```bash
 pip install pyserial numpy
@@ -94,11 +83,12 @@ python fpga_host.py --port /dev/ttyUSB0 --N 4 --iters 20
 ```
 
 Common ports:
+
 - Linux: `/dev/ttyUSB0` or `/dev/ttyACM0`
 - macOS: `/dev/cu.usbserial-XXXX`
 - Windows: `COM3` (check Device Manager)
 
-### 6. Run with Software Simulator (no hardware)
+### 5. Run with Software Simulator (no hardware)
 
 ```bash
 # Linux/macOS – create virtual serial pair
@@ -112,7 +102,7 @@ python fpga_sim.py --port /tmp/fpga_sim --N 4
 python fpga_host.py --port /tmp/fpga_host --N 4 --iters 5
 ```
 
-### 7. Analyze and Plot Results
+### 6. Analyze and Plot Results
 
 ```bash
 python analyze_results.py --demo          # synthetic data
@@ -125,7 +115,7 @@ python analyze_results.py --results my_results.json  # your data
 
 ### FPGA Architecture
 
-```
+```text
 PC ──UART──► [uart_rx] ──bytes──► [uart_ctrl FSM]
                                         │
                               ┌─────────┴──────────┐
