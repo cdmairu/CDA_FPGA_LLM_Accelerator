@@ -32,7 +32,14 @@ fpga_matmul/
 
 ## Quick Start
 
-### 1. Simulate (no hardware)
+### 1. Install Gowin EDA
+
+- Go to <https://www.gowinsemi.com/en/support/download_eda>
+- Click the "Software for Linux" tab
+- Download the Education (Linux x64) version (no license is required)
+- Accept licenses and install USB drivers
+
+### 2. Simulate (no hardware)
 
 ```bash
 # Install Icarus Verilog
@@ -55,7 +62,7 @@ Expected output:
 ALL TESTS PASSED
 ```
 
-### 2. Synthesise (Gowin IDE)
+### 3. Synthesise (Gowin IDE)
 
 1. Create a new project for device `GW2A-LV18PG256C8/I7`.
 2. Add all `rtl/*.v` files.
@@ -68,7 +75,7 @@ Check the synthesis report for:
 - DSP block count
 - Max frequency (should be well above 27 MHz for N=4/8)
 
-### 3. Run CPU Baseline
+### 4. Run CPU Baseline
 
 ```bash
 cd host
@@ -76,7 +83,7 @@ pip install numpy
 python cpu_baseline.py
 ```
 
-### 4. Run with Real FPGA
+### 5. Run with Real FPGA
 
 ```bash
 pip install pyserial numpy
@@ -88,7 +95,7 @@ Common ports:
 - macOS: `/dev/cu.usbserial-XXXX`
 - Windows: `COM3` (check Device Manager)
 
-### 5. Run with Software Simulator (no hardware)
+### 6. Run with Software Simulator (no hardware)
 
 ```bash
 # Linux/macOS – create virtual serial pair
@@ -102,7 +109,7 @@ python fpga_sim.py --port /tmp/fpga_sim --N 4
 python fpga_host.py --port /tmp/fpga_host --N 4 --iters 5
 ```
 
-### 6. Analyze and Plot Results
+### 7. Analyze and Plot Results
 
 ```bash
 python analyze_results.py --demo          # synthetic data
@@ -133,21 +140,21 @@ Total compute cycles ≈ N³ + N² (write-back overhead).
 
 ### Protocol
 
-| Direction | Content | Size |
-|-----------|---------|------|
-| PC → FPGA | Command byte `0x01` | 1 B |
+| Direction | Content                        | Size    |
+| --------- | ------------------------------ | ------- |
+| PC → FPGA | Command byte `0x01`            | 1 B     |
 | PC → FPGA | Matrix A (int16 LE, row-major) | N×N×2 B |
 | PC → FPGA | Matrix B (int16 LE, row-major) | N×N×2 B |
 | FPGA → PC | Matrix C (int32 LE, row-major) | N×N×4 B |
-| FPGA → PC | Cycle count (uint32 LE) | 4 B |
+| FPGA → PC | Cycle count (uint32 LE)        | 4 B     |
 
 ### Expected Performance (27 MHz clock, 115200 baud)
 
-| N | FPGA cycles | FPGA time | UART overhead | CPU naive |
-|---|-------------|-----------|---------------|-----------|
-| 4 | ~84 | ~3.1 µs | ~3.0 ms | ~4 µs |
-| 8 | ~584 | ~21.6 µs | ~9.4 ms | ~42 µs |
-| 16 | ~4368 | ~162 µs | ~36 ms | ~580 µs |
+| N   | FPGA cycles | FPGA time | UART overhead | CPU naive |
+| --- | ----------- | --------- | ------------- | --------- |
+| 4   | ~84         | ~3.1 µs   | ~3.0 ms       | ~4 µs     |
+| 8   | ~584        | ~21.6 µs  | ~9.4 ms       | ~42 µs    |
+| 16  | ~4368       | ~162 µs   | ~36 ms        | ~580 µs   |
 
 > **Note:** UART dominates end-to-end time. The *compute-only* speedup (from
 > the cycle counter) is what shows the FPGA advantage. A higher baud rate
@@ -166,13 +173,13 @@ blocks – the GW2A-18 has 48, so N=4 parallel fits comfortably.
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| No RX data from FPGA | Wrong port / baud | Check Device Manager / `dmesg` |
-| Mismatched results | Byte-order bug | Verify LE packing in host script |
-| Simulation hangs | Off-by-one in FSM | Check `N-1` comparisons in matmul_core |
-| Synthesis fails timing | Clock too high | Lower to 27 MHz (already default) |
-| LED not blinking | Wrong pin in .cst | Check board schematic |
+| Symptom                | Likely cause      | Fix                                    |
+| ---------------------- | ----------------- | -------------------------------------- |
+| No RX data from FPGA   | Wrong port / baud | Check Device Manager / `dmesg`         |
+| Mismatched results     | Byte-order bug    | Verify LE packing in host script       |
+| Simulation hangs       | Off-by-one in FSM | Check `N-1` comparisons in matmul_core |
+| Synthesis fails timing | Clock too high    | Lower to 27 MHz (already default)      |
+| LED not blinking       | Wrong pin in .cst | Check board schematic                  |
 
 ---
 
