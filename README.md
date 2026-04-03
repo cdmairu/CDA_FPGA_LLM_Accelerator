@@ -7,7 +7,7 @@ A complete FPGA-based matrix-multiplication accelerator targeting the
 
 ## Repository Layout
 
-```
+```text
 fpga_matmul/
 ├── rtl/
 │   ├── uart_rx.v        — UART receiver (8N1, parameterised baud)
@@ -35,8 +35,8 @@ fpga_matmul/
 ### 1. Install Gowin EDA
 
 - Go to <https://www.gowinsemi.com/en/support/download_eda>
-- Click the "Software for Linux" tab
-- Download the Education (Linux x64) version (no license is required)
+- ~~Click the "Software for Linux" tab~~
+- Download the Education version (no license is required)
 - Accept licenses and install USB drivers
 
 ### 2. Simulate (no hardware)
@@ -64,11 +64,14 @@ ALL TESTS PASSED
 
 ### 3. Synthesise (Gowin IDE)
 
-1. Create a new project for device `GW2A-LV18PG256C8/I7`.
-2. Add all `rtl/*.v` files.
-3. Add `constraints/top.cst` and `constraints/top.sdc`.
-4. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
-5. Run Synthesis → Place & Route → Program Device.
+1. Create a new project for device [`GW2A-LV18PG256C8/I7`](https://wiki.sipeed.com/hardware/en/tang/tang-primer-20k/primer-20k.html).
+2. Right click `GW2A-LV18PG256C8/I7` --> Add Files...
+3. Add all `rtl/*.v` files.  Copy them into the source directory (else the path is really long and hard to read in the Design window)
+4. Add `constraints/top.cst` and `constraints/top.sdc`.
+5. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
+6. In the top toolbar, click Run Synthesis, then Place & Route
+7. Tools --> Programmer
+8. Plug in USB cable from computer to USB-JTAG port
 
 Check the synthesis report for:
 - LUT count
@@ -194,3 +197,12 @@ pip install numpy pyserial matplotlib
 ```
 
 **Simulation:** [Icarus Verilog](https://github.com/steveicarus/iverilog) (free, cross-platform).
+
+## Reference
+
+- [TangPrimer-20K-example](https://github.com/sipeed/TangPrimer-20K-example)
+
+### Useful VS Code Extensions
+
+- .cst file syntax highlighting: `wxhenry.fpga-file-support`
+- .v file syntax highlighting: `mshr-h.veriloghdl`
