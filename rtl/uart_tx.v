@@ -1,90 +1,162 @@
-// =============================================================================
-// uart_tx.v  –  UART Transmitter  (Gowin/Verilog-2001 clean)
-// 8N1, configurable baud via CLK_FREQ / BAUD_RATE parameters
-//
-// Fix vs original:
-//   - clk_cnt widened to 18 bits (handles CLK/BAUD up to ~262143)
-//   - bit_idx widened to 4 bits (eliminates 4→3 truncation warning)
-//   - All increments explicitly masked to their target width so Gowin
-//     does not warn about expression-size truncation (EX3791)
-// =============================================================================
-module uart_tx #(
-    parameter CLK_FREQ  = 27_000_000,
-    parameter BAUD_RATE = 115200
-)(
-    input  wire       clk,
-    input  wire       rst_n,
-    input  wire [7:0] data,
-    input  wire       start,
-    output reg        tx,
-    output reg        busy
+module uart_tx
+#(
+	parameter CLK_FRE = 27,      //clock frequency(Mhz)
+	parameter BAUD_RATE = 115200 //serial baud rate
+)
+(
+	input                        clk,              //clock input
+	input                        rst_n,            //asynchronous reset input, low active 
+	input[7:0]                   tx_data,          //data to send
+	input                        tx_data_valid,    //data to be sent is valid
+	output                       tx_data_ready,    //send ready
+	output                       tx_pin,           //serial data output
+    output                       tx_busy
 );
+//calculates the clock cycle for baud rate 
+localparam              integer CYCLE = CLK_FRE * 1000000 / BAUD_RATE;
+localparam              integer CNT_W = (CYCLE <= 1) ? 1 : $clog2(CYCLE);
+localparam [CNT_W-1:0]          CYCLE_MAX = CYCLE-1;
 
-localparam CLKS_PER_BIT = CLK_FREQ / BAUD_RATE;
+//initial begin
+//  if (CYCLE < 2) $error("CYCLE too small: check CLK_FRE and BAUD_RATE");
+//end
 
-localparam IDLE  = 2'd0,
-           START = 2'd1,
-           DATA  = 2'd2,
-           STOP  = 2'd3;
+//state machine code
+localparam [2:0]                 S_IDLE       = 3'd1;
+localparam [2:0]                 S_START      = 3'd2;//start bit
+localparam [2:0]                 S_SEND_BYTE  = 3'd3;//data bits
+localparam [2:0]                 S_STOP       = 3'd4;//stop bit
 
-reg [1:0]  state;
-reg [17:0] clk_cnt;   // 18-bit: handles up to 262143 clocks/bit
-reg [3:0]  bit_idx;   // 4-bit: 0-7, no truncation on +1
-reg [7:0]  shift;
+reg[CNT_W-1:0]                   cycle_cnt;     //baud counter
+reg[2:0]                         state;
+reg[2:0]                         next_state;
+reg[2:0]                         bit_cnt;       //bit counter
+reg[7:0]                         tx_data_latch; //latch data to send
+reg                              tx_reg;        //serial data output
 
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        state   <= IDLE;
-        tx      <= 1'b1;
-        busy    <= 1'b0;
-        clk_cnt <= 18'd0;
-        bit_idx <= 4'd0;
-        shift   <= 8'd0;
-    end else begin
-        case (state)
-            IDLE: begin
-                tx   <= 1'b1;
-                busy <= 1'b0;
-                if (start) begin
-                    shift   <= data;
-                    state   <= START;
-                    clk_cnt <= 18'd1;
-                    busy    <= 1'b1;
-                end
-            end
-            START: begin
-                tx <= 1'b0;
-                if (clk_cnt == CLKS_PER_BIT[17:0]) begin
-                    state   <= DATA;
-                    clk_cnt <= 18'd1;
-                    bit_idx <= 4'd0;
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-            DATA: begin
-                tx <= shift[0];
-                if (clk_cnt == CLKS_PER_BIT[17:0]) begin
-                    shift   <= {1'b0, shift[7:1]};
-                    clk_cnt <= 18'd1;
-                    if (bit_idx == 4'd7) begin
-                        state   <= STOP;
-                        bit_idx <= 4'd0;
-                    end else
-                        bit_idx <= bit_idx + 4'd1;
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-            STOP: begin
-                tx <= 1'b1;
-                if (clk_cnt == CLKS_PER_BIT[17:0]) begin
-                    state   <= IDLE;
-                    clk_cnt <= 18'd0;
-                    busy    <= 1'b0;
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-        endcase
-    end
+wire   bit_tick = (cycle_cnt == CYCLE_MAX);
+wire   accept = (state == S_IDLE) && tx_data_valid;
+assign tx_data_ready = (state == S_IDLE);
+assign tx_busy = (state != S_IDLE);
+
+assign tx_pin = tx_reg;
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		state <= S_IDLE;
+	else
+		state <= next_state;
 end
 
-endmodule
+always@(*)
+begin
+	case(state)
+		S_IDLE:
+			if(tx_data_valid == 1'b1)
+				next_state = S_START;
+			else
+				next_state = S_IDLE;
+		S_START:
+			if(bit_tick)
+				next_state = S_SEND_BYTE;
+			else
+				next_state = S_START;
+		S_SEND_BYTE:
+			if(bit_tick  && bit_cnt == 3'd7)
+				next_state = S_STOP;
+			else
+				next_state = S_SEND_BYTE;
+		S_STOP:
+			if(bit_tick)
+				next_state = S_IDLE;
+			else
+				next_state = S_STOP;
+		default:
+			next_state = S_IDLE;
+	endcase
+end
+
+/*
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		begin
+			tx_data_ready <= 1'b0;
+		end
+	else if(state == S_IDLE)
+		if(tx_data_valid == 1'b1)
+			tx_data_ready <= 1'b0;
+		else
+			tx_data_ready <= 1'b1;
+	else if(state == S_STOP && cycle_cnt == CYCLE - 1)
+			tx_data_ready <= 1'b1;
+end
+*/
+
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		begin
+			tx_data_latch <= 8'd0;
+		end
+	else if(accept)
+			tx_data_latch <= tx_data;
+		
+end
+
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		begin
+			bit_cnt <= 3'd0;
+		end
+	else if(state == S_SEND_BYTE)
+		if(cycle_cnt == CYCLE - 1)
+			bit_cnt <= bit_cnt + 3'd1;
+		else
+			bit_cnt <= bit_cnt;
+	else
+		bit_cnt <= 3'd0;
+end
+
+/*
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		cycle_cnt <= 'd0;
+	else if((state == S_SEND_BYTE && cycle_cnt == CYCLE - 1) || next_state != state)
+		cycle_cnt <= 'd0;
+	else
+		cycle_cnt <= cycle_cnt + 'd1;	
+end
+*/
+
+always @(posedge clk or negedge rst_n) begin
+   if(!rst_n) cycle_cnt <= 'd0;
+   else if (state == S_IDLE) 
+     cycle_cnt <= 'd0;             
+   else if (bit_tick)        
+     cycle_cnt <= 'd0;
+   else                      
+     cycle_cnt <= cycle_cnt + 1'b1;
+end
+
+
+always@(posedge clk or negedge rst_n)
+begin
+	if(rst_n == 1'b0)
+		tx_reg <= 1'b1;
+	else
+		case(state)
+			S_IDLE,S_STOP:
+				tx_reg <= 1'b1; 
+			S_START:
+				tx_reg <= 1'b0; 
+			S_SEND_BYTE:
+				tx_reg <= tx_data_latch[bit_cnt];
+			default:
+				tx_reg <= 1'b1; 
+		endcase
+end
+
+endmodule 

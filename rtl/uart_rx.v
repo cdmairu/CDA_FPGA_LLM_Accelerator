@@ -1,93 +1,159 @@
-// =============================================================================
-// uart_rx.v  –  UART Receiver  (Gowin/Verilog-2001 clean)
-// 8N1, configurable baud via CLK_FREQ / BAUD_RATE parameters
-//
-// Fix vs original:
-//   - clk_cnt widened to 18 bits
-//   - bit_idx widened to 4 bits
-//   - All increments explicitly masked to target width (eliminates EX3791)
-// =============================================================================
 module uart_rx #(
-    parameter CLK_FREQ  = 27_000_000,
-    parameter BAUD_RATE = 115200
+    parameter integer CLK_FRE   = 27,              //clock frequency(Mhz)
+    parameter integer BAUD_RATE = 115200    	   //serial baud rate
 )(
-    input  wire       clk,
-    input  wire       rst_n,
-    input  wire       rx,
-    output reg  [7:0] data,
-    output reg        valid
+	input                        clk,              //clock input
+	input                        rst_n,            //asynchronous reset input, low active 
+	output reg[7:0]              rx_data,          //received serial data
+	output reg                   rx_data_valid,    //received serial data is valid
+	input                        rx_data_ready,    //data receiver module ready
+	input                        rx_pin            //serial data input
 );
+localparam integer CYCLE = CLK_FRE * 1000000 / BAUD_RATE;
+localparam integer CNT_W = (CYCLE <= 1) ? 1 : $clog2(CYCLE+1);
 
-localparam CLKS_PER_BIT = CLK_FREQ / BAUD_RATE;
-localparam HALF_BIT     = CLKS_PER_BIT / 2;
+//initial begin
+//  if (CYCLE < 2) $error("CYCLE too small: check CLK_FRE and BAUD_RATE");
+//end
 
-localparam IDLE  = 2'd0,
-           START = 2'd1,
-           DATA  = 2'd2,
-           STOP  = 2'd3;
 
-reg [1:0]  state;
-reg [17:0] clk_cnt;   // 18-bit
-reg [3:0]  bit_idx;   // 4-bit
-reg [7:0]  shift;
+localparam [2:0] S_IDLE     = 3'd1;
+localparam [2:0] S_START    = 3'd2;					//start bit
+localparam [2:0] S_REC_BYTE = 3'd3;					//data bits
+localparam [2:0] S_STOP     = 3'd4;					//stop bit
+localparam [2:0] S_DATA     = 3'd5;
 
-// Double-flop synchroniser
-reg rx_sync0, rx_sync1;
-always @(posedge clk) begin
-    rx_sync0 <= rx;
-    rx_sync1 <= rx_sync0;
+reg [2:0]  		state, next_state;
+reg        		rx_d0, rx_d1;						//delay for rx_pin
+wire       		rx_negedge;							//negedge of rx_pin
+
+reg [7:0]  		rx_bits;							//temporary storage of received data
+reg [CNT_W-1:0] cycle_cnt;							//baud counter
+reg [2:0]  		bit_cnt;							//bit counter
+
+assign rx_negedge = rx_d1 & ~rx_d0;
+
+// 2-FF sync
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        rx_d0 <= 1'b1;
+        rx_d1 <= 1'b1;
+    end else begin
+        rx_d0 <= rx_pin;
+        rx_d1 <= rx_d0;
+    end
 end
 
+// state reg
 always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        state   <= IDLE;
-        clk_cnt <= 18'd0;
-        bit_idx <= 4'd0;
-        shift   <= 8'd0;
-        data    <= 8'd0;
-        valid   <= 1'b0;
+    if(!rst_n) state <= S_IDLE;
+    else       state <= next_state;
+end
+
+// next state
+always @(*) begin
+    case(state)
+        S_IDLE: begin
+            if(rx_negedge) next_state = S_START;
+            else           next_state = S_IDLE;
+        end
+
+        // start bit: confirm at half-bit
+        S_START: begin
+            if(cycle_cnt == (CYCLE/2 - 1)) begin
+                if(rx_d0 == 1'b0) next_state = S_REC_BYTE; // valid start
+                else              next_state = S_IDLE;     // glitch
+            end else begin
+                next_state = S_START;
+            end
+        end
+
+        S_REC_BYTE: begin
+            if(cycle_cnt == (CYCLE - 1) && bit_cnt == 3'd7)
+                next_state = S_STOP;
+            else
+                next_state = S_REC_BYTE;
+        end
+
+        // stop bit: sample mid-bit; require '1'
+        S_STOP: begin
+            if(cycle_cnt == (CYCLE - 1)) begin
+                if(rx_d0 == 1'b1) next_state = S_DATA;  // good stop
+                else              next_state = S_IDLE;  // framing error -> drop
+            end else begin
+                next_state = S_STOP;
+            end
+        end
+
+        S_DATA: begin
+            if(rx_data_ready) next_state = S_IDLE;
+            else              next_state = S_DATA;
+        end
+
+        default: next_state = S_IDLE;
+    endcase
+end
+
+// cycle counter
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        cycle_cnt <= {CNT_W{1'b0}};
     end else begin
-        valid <= 1'b0;
-        case (state)
-            IDLE: begin
-                if (!rx_sync1) begin          // falling edge → start bit
-                    state   <= START;
-                    clk_cnt <= 18'd1;
-                end
+        if(next_state != state) begin
+            cycle_cnt <= {CNT_W{1'b0}};
+        end else begin
+            // count within state
+            if(state == S_REC_BYTE) begin
+                if(cycle_cnt == (CYCLE-1)) cycle_cnt <= {CNT_W{1'b0}};
+                else                       cycle_cnt <= cycle_cnt + 1'b1;
+            end else begin
+                // for START/STOP we only need up to half-bit
+                if(cycle_cnt == (CYCLE-1)) cycle_cnt <= {CNT_W{1'b0}};
+                else                       cycle_cnt <= cycle_cnt + 1'b1;
             end
-            START: begin
-                if (clk_cnt == HALF_BIT[17:0]) begin
-                    if (!rx_sync1) begin       // confirmed start bit
-                        state   <= DATA;
-                        clk_cnt <= 18'd1;
-                        bit_idx <= 4'd0;
-                    end else
-                        state <= IDLE;         // glitch, abort
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-            DATA: begin
-                if (clk_cnt == CLKS_PER_BIT[17:0]) begin
-                    shift   <= {rx_sync1, shift[7:1]};  // LSB first
-                    clk_cnt <= 18'd1;
-                    if (bit_idx == 4'd7) begin
-                        state   <= STOP;
-                        bit_idx <= 4'd0;
-                    end else
-                        bit_idx <= bit_idx + 4'd1;
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-            STOP: begin
-                if (clk_cnt == CLKS_PER_BIT[17:0]) begin
-                    data    <= shift;
-                    valid   <= 1'b1;
-                    state   <= IDLE;
-                    clk_cnt <= 18'd0;
-                end else
-                    clk_cnt <= clk_cnt + 18'd1;
-            end
-        endcase
+        end
+    end
+end
+
+// bit counter
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        bit_cnt <= 3'd0;
+    end else if(state == S_REC_BYTE) begin
+        if(cycle_cnt == (CYCLE-1)) bit_cnt <= bit_cnt + 3'd1;
+    end else begin
+        bit_cnt <= 3'd0;
+    end
+end
+
+// sample bits at mid-bit
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        rx_bits <= 8'd0;
+    end
+    else if(state == S_REC_BYTE && cycle_cnt == (CYCLE - 1)) begin
+        rx_bits[bit_cnt] <= rx_d0;
+    end
+end
+
+// latch to output on entering DATA (only when stop bit good)
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        rx_data <= 8'd0;
+    end else if(state == S_STOP && next_state == S_DATA) begin
+        rx_data <= rx_bits;
+    end
+end
+
+// valid handshake
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        rx_data_valid <= 1'b0;
+    end else begin
+        if(state == S_STOP && next_state == S_DATA)
+            rx_data_valid <= 1'b1;
+        else if(state == S_DATA && rx_data_ready)
+            rx_data_valid <= 1'b0;
     end
 end
 

@@ -10,18 +10,18 @@
 // Source: https://github.com/sipeed/TangPrimer-20K-example?tab=readme-ov-file#tang-primer-20k-dock-pin-constrain
 
 IO_LOC  "clk" H11;
-IO_PORT "clk" IO_TYPE=LVCMOS33;
+IO_PORT "clk" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
 
 // Onboard BL702 used to download bitstream file and provide serial communication
 // source: https://wiki.sipeed.com/hardware/en/tang/tang-primer-20k/primer-20k.html
 // uart_rx = data coming IN to the FPGA from USB host
 // Example: https://github.com/sipeed/TangPrimer-20K-example/tree/main/UART
 IO_LOC  "uart_rx" T13;
-IO_PORT "uart_rx" IO_TYPE=LVCMOS33;
+IO_PORT "uart_rx" IO_TYPE=LVCMOS33 PULL_MODE=NONE BANK_VCCIO=3.3;
 
 // uart_tx = data going OUT from the FPGA to USB host
 IO_LOC  "uart_tx" M11;
-IO_PORT "uart_tx" IO_TYPE=LVCMOS33;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 
 // one WS2812 RGB LED on the Tang Primer 20K Dock
 // example: https://github.com/sipeed/TangPrimer-20K-example/tree/main/WS2812
@@ -48,16 +48,16 @@ IO_PORT "uart_tx" IO_TYPE=LVCMOS33;
 // IO_LOC "led4"  L14;
 // IO_PORT "led4" IO_TYPE=LVCMOS33;
 
-IO_LOC "led5"  L16;
-IO_PORT "led5" IO_TYPE=LVCMOS33;
+//IO_LOC "led5"  L16;
+//IO_PORT "led5" IO_TYPE=LVCMOS33;
 
 // five push buttons on the Tang Primer 20K Dock
 
 // IO_LOC "btn_s0"  T10;
 // IO_PORT "btn_s0" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
-IO_LOC "rst_n"  T3; // button S1
-IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC "rst_n"  T5; 
+IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
 
 // IO_LOC "btn_s2"  T2;
 // IO_PORT "btn_s2" IO_TYPE=LVCMOS33 PULL_MODE=UP;

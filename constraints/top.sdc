@@ -1,7 +1,7 @@
 # top.sdc – Timing Constraints (Gowin IDE / nextpnr)
 
 # 27 MHz primary clock
-create_clock -name clk -period 37.037 [get_ports {clk}]
+create_clock -name sys_clk -period 37.037 -waveform {0 18.518} [get_ports {clk}]
 
 # False paths on async reset
 set_false_path -from [get_ports {rst_n}]
