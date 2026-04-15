@@ -17,14 +17,16 @@
 
 ## Program FPGA
 
-1. In the top toolbar, click Run Synthesis, then click Place & Route
+1. In the top toolbar, click "Run Synthesis" (LEGO block), then click "Run Place & Route" (four square)
 2. Tools --> Programmer
 3. Plug in USB cable from computer to USB-JTAG port --> Program/Configure
 4. Flip DIP switch #1 to ON to enable the core board: [picture](https://wiki.sipeed.com/hardware/en/tang/tang-primer-20k/primer-20k.html#Dock-ext-board-not-work)
-5. Settings:
+5. Flip DIP switch #5 to ON for the normally high reset switch
+6. Settings:
    1. Series: GW2A
-   2. Device: GW2A-18C
-   3. Access Mode: External Flash Mode
-   4. Operation: exFlash Erase,Program thru GAO-Bridge
-   5. FS File: point to `/impl/pnr/[PROJECT_NAME].fs`
-6. Click the Program/Configure button in the top toolbar
+   2. Device: GW2A-18
+   3. Device Version: C
+   4. Access Mode: External Flash Mode
+   5. Operation: exFlash Erase,Program thru GAO-Bridge
+   6. FS File: point to `/impl/pnr/[PROJECT_NAME].fs`
+7. Click the Program/Configure button in the top toolbar

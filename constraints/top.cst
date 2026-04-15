@@ -29,7 +29,7 @@ IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 // IO_LOC "rgb_led"  T9;
 // IO_PORT "rgb_led" IO_TYPE=LVCMOS33;
 
-// six LEDs on the Tang Primer 20K Dock
+// ************************ six LEDs on the Tang Primer 20K Dock ************************
 
 // reserved for DONE (System boot finished)
 // IO_LOC "led0"  C13;
@@ -48,16 +48,16 @@ IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 // IO_LOC "led4"  L14;
 // IO_PORT "led4" IO_TYPE=LVCMOS33;
 
-//IO_LOC "led5"  L16;
-//IO_PORT "led5" IO_TYPE=LVCMOS33;
+IO_LOC "led5"  L16;
+IO_PORT "led5" IO_TYPE=LVCMOS33;
 
-// five push buttons on the Tang Primer 20K Dock
+// ************************ five push buttons on the Tang Primer 20K Dock ************************
 
 // IO_LOC "btn_s0"  T10;
 // IO_PORT "btn_s0" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
-IO_LOC "rst_n"  T5; 
-IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
+// IO_LOC "btn_s1"  T3;
+// IO_PORT "btn_s1" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
 // IO_LOC "btn_s2"  T2;
 // IO_PORT "btn_s2" IO_TYPE=LVCMOS33 PULL_MODE=UP;
@@ -67,3 +67,9 @@ IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
 
 // IO_LOC "btn_s4"  C7;
 // IO_PORT "btn_s4" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ************************ DIP Switches ************************
+
+// when DIP switch 5 is down (ON), rst_n = 1 (normally high)
+IO_LOC "rst_n"  T5; 
+IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
