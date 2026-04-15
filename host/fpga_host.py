@@ -107,7 +107,9 @@ def run_benchmark(ser: serial.Serial, N: int, iterations: int, fclk_hz: float):
     errors = 0
 
     for i in range(iterations):
-        import math; max_val = int(math.sqrt((2**31-1)/N))-1
+        import math
+
+        max_val = int(math.sqrt((2**31 - 1) / N)) - 1
         A = rng.integers(-max_val, max_val, size=(N, N)).astype(np.int16)
         B = rng.integers(-max_val, max_val, size=(N, N)).astype(np.int16)
 
@@ -120,17 +122,17 @@ def run_benchmark(ser: serial.Serial, N: int, iterations: int, fclk_hz: float):
 
     t_e2e_end = time.perf_counter()
 
-    avg_cycles  = total_cycles / iterations
-    fpga_us     = avg_cycles / fclk_hz * 1e6
-    e2e_us      = (t_e2e_end - t_e2e_start) / iterations * 1e6
+    avg_cycles = total_cycles / iterations
+    fpga_us = avg_cycles / fclk_hz * 1e6
+    e2e_us = (t_e2e_end - t_e2e_start) / iterations * 1e6
 
     return {
-        "N":          N,
+        "N": N,
         "iterations": iterations,
-        "errors":     errors,
+        "errors": errors,
         "avg_cycles": avg_cycles,
-        "fpga_us":    fpga_us,
-        "e2e_us":     e2e_us,
+        "fpga_us": fpga_us,
+        "e2e_us": e2e_us,
     }
 
 
@@ -138,7 +140,7 @@ def run_benchmark(ser: serial.Serial, N: int, iterations: int, fclk_hz: float):
 # Report
 # ---------------------------------------------------------------------------
 def print_report(res: dict, cpu_naive_us: float, cpu_numpy_us: float):
-    N    = res["N"]
+    N = res["N"]
     print("\n" + "=" * 62)
     print(f"  N = {N}   ({res['iterations']} iterations,  errors={res['errors']})")
     print("-" * 62)
@@ -148,7 +150,7 @@ def print_report(res: dict, cpu_naive_us: float, cpu_numpy_us: float):
     print(f"  CPU NumPy int32                  : {cpu_numpy_us:>10.3f} µs")
     if res["fpga_us"] > 0:
         sp_compute = cpu_naive_us / res["fpga_us"]
-        sp_e2e     = cpu_naive_us / res["e2e_us"]
+        sp_e2e = cpu_naive_us / res["e2e_us"]
         print(f"  Speedup vs naive (compute only)  : {sp_compute:>10.2f}x")
         print(f"  Speedup vs naive (end-to-end)    : {sp_e2e:>10.2f}x")
     print("=" * 62)
@@ -160,6 +162,7 @@ def print_report(res: dict, cpu_naive_us: float, cpu_numpy_us: float):
 def cpu_baseline(N: int, iterations: int = 5000):
     rng = np.random.default_rng(42)
     import math
+
     max_val = int(math.sqrt((2**31 - 1) / N)) - 1
     A = rng.integers(-max_val, max_val, size=(N, N)).astype(np.int16)
     B = rng.integers(-max_val, max_val, size=(N, N)).astype(np.int16)
@@ -168,7 +171,7 @@ def cpu_baseline(N: int, iterations: int = 5000):
 
     # Naive
     def naive():
-        C = [[0]*N for _ in range(N)]
+        C = [[0] * N for _ in range(N)]
         for i in range(N):
             for j in range(N):
                 s = 0
@@ -195,12 +198,24 @@ def cpu_baseline(N: int, iterations: int = 5000):
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="FPGA MatMul Host")
-    parser.add_argument("--port",  required=True,  help="Serial port, e.g. /dev/ttyUSB0 or COM3")
-    parser.add_argument("--N",     type=int, default=4, choices=[4, 8, 16], help="Matrix dimension")
-    parser.add_argument("--baud",  type=int, default=115200, help="Baud rate (must match FPGA)")
-    parser.add_argument("--iters", type=int, default=10,  help="Number of test iterations")
-    parser.add_argument("--fclk",  type=float, default=27e6, help="FPGA clock frequency in Hz")
-    parser.add_argument("--timeout", type=float, default=5.0, help="Serial read timeout in seconds")
+    parser.add_argument(
+        "--port", required=True, help="Serial port, e.g. /dev/ttyUSB0 or COM3"
+    )
+    parser.add_argument(
+        "--N", type=int, default=4, choices=[4, 8, 16], help="Matrix dimension"
+    )
+    parser.add_argument(
+        "--baud", type=int, default=115200, help="Baud rate (must match FPGA)"
+    )
+    parser.add_argument(
+        "--iters", type=int, default=10, help="Number of test iterations"
+    )
+    parser.add_argument(
+        "--fclk", type=float, default=27e6, help="FPGA clock frequency in Hz"
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=5.0, help="Serial read timeout in seconds"
+    )
     args = parser.parse_args()
 
     N = args.N
@@ -211,7 +226,7 @@ def main():
         print(f"Error opening port: {e}")
         sys.exit(1)
 
-    time.sleep(0.1)  # let UART settle
+    time.sleep(0.2)  # let UART settle
     ser.reset_input_buffer()
 
     print(f"Running {args.iters} iterations  (N={N}) …")
@@ -239,3 +254,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Example run command: py fpga_host.py --port COM6 --N 4 --baud 115200 --iters 10 --fclk 27000000 --timeout 5
