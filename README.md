@@ -59,7 +59,7 @@ ALL TESTS PASSED
 ### 2. Synthesise (Gowin IDE)
 
 1. see [INSTRUCTIONS.md](INSTRUCTIONS.md)
-2. **To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.
+2. ~~**To change matrix size**: open `top.v` and change `parameter N = 4` to `8` or `16`.~~ (this is specified in the command line for `fpga_host.py` right?)
 
 Check the synthesis report for:
 
