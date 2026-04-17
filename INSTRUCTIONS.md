@@ -37,17 +37,14 @@
 
 1. make sure `parameter integer N = 4` in `rtl/top.v`
 2. `cd host`
-3. `py fpga_host.py --port COM6 --N 4 --baud 115200 --iters 10 --fclk 27000000 --timeout 5`
+3. `py fpga_host.py --port COM3 --N 4 --baud 115200 --iters 1000 --fclk 100000000 --timeout 5`
 
 ### Matrix Dimension of 8
 
 1. make sure `parameter integer N = 8` in `rtl/top.v`
 2. `cd host`
-3. `py fpga_host.py --port COM6 --N 8 --baud 115200 --iters 10 --fclk 27000000 --timeout 5`
+3. `py fpga_host.py --port COM3 --N 8 --baud 115200 --iters 1000 --fclk 100000000 --timeout 5`
 
 ### Notes
 
-- `COM6` will match your port number for the Tang Primer 20k FPGA seen in Device Manager --> Ports (COM & LPT) --> USB Serial Port (unplug and replug the board to see which it is)
-- the board is not capable of doing a matrix dimension of 16
-  - The program would use **16,616** DFFs, but the GW2A‑18 device only has **16,173** DFFs.
-  - A DFF is a D-type flip-flop (often shown as “DFF” in FPGA reports). It’s the basic 1‑bit storage element used to build registers in synchronous digital logic.
+- `COM3` will match your port number for the BASYS 3 FPGA seen in Device Manager --> Ports (COM & LPT) --> USB Serial Port (unplug and replug the board to see which it is)

@@ -1,5 +1,5 @@
 module uart_rx #(
-    parameter integer CLK_FRE   = 27,              //clock frequency(Mhz)
+    parameter integer CLK_FRE   = 100,              //clock frequency(Mhz)
     parameter integer BAUD_RATE = 115200    	   //serial baud rate
 )(
 	input                        clk,              //clock input

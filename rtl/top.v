@@ -3,22 +3,25 @@
 // =============================================================================
 module top #(
     parameter integer N           = 4,
-    parameter integer CLK_FREQ_HZ = 27_000_000,
+    parameter integer CLK_FREQ_HZ = 100_000_000,
     parameter integer BAUD_RATE   = 115200
 )(
     input  wire clk,
-    input  wire rst_n,
+    input  wire btnC,
     input  wire uart_rx,
     output wire uart_tx,
-    output wire led5
+    output wire led16
 );
 
-    // Heartbeat (27 MHz => toggle about 1 Hz)
+    // Heartbeat (100 MHz => toggle about 1 Hz)
     localparam integer HALF_PERIOD_COUNT = (CLK_FREQ_HZ / 2) - 1;
+
+    // BASYS 3 buttons are typically active-high signals
+    wire rst_n = ~btnC;
 
     reg [$clog2(CLK_FREQ_HZ / 2)-1:0] cnt;
     reg led_r;
-    assign led5 = led_r;
+    assign led16 = led_r;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

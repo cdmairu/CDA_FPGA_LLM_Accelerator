@@ -8,7 +8,7 @@
 // =============================================================================
 module uart_ctrl #(
     parameter integer N           = 4,
-    parameter integer CLK_FREQ_HZ = 27_000_000,
+    parameter integer CLK_FREQ_HZ = 100_000_000,
     parameter integer BAUD_RATE   = 115200
 )(
     input  wire clk,
