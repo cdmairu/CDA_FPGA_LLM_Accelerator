@@ -35,15 +35,15 @@
 
 ### Matrix Dimension of 4
 
-1. make sure `parameter integer N = 4` in `rtl/top.v`
+1. make sure `parameter integer N = 4` in `rtl/top.v` and re-program the board
 2. `cd host`
-3. `py fpga_host.py --port COM6 --N 4 --baud 115200 --iters 10 --fclk 27000000 --timeout 5`
+3. `py fpga_host.py --port COM6 --N 4 --baud 115200 --iters 100 --fclk 27000000 --timeout 5`
 
 ### Matrix Dimension of 8
 
-1. make sure `parameter integer N = 8` in `rtl/top.v`
+1. make sure `parameter integer N = 8` in `rtl/top.v` and re-program the board
 2. `cd host`
-3. `py fpga_host.py --port COM6 --N 8 --baud 115200 --iters 10 --fclk 27000000 --timeout 5`
+3. `py fpga_host.py --port COM6 --N 8 --baud 115200 --iters 100 --fclk 27000000 --timeout 5`
 
 ### Notes
 
