@@ -1,0 +1,31 @@
+Test cases created for matrix multiplication correctness:
+
+N = 4
+1. identity_times_known -> output should equal B
+2. zero_times_known -> output should be all zeros
+3. ones_times_ones -> all output values should be 4
+4. mixed_signed -> output should match expected signed matrix
+5. fixed_random_seed_42 -> output should match saved expected matrix
+
+N = 8
+1. identity_times_known -> output should equal B
+2. zero_times_known -> output should be all zeros
+3. ones_times_ones -> all output values should be 8
+4. mixed_signed -> output should match expected signed matrix
+5. fixed_random_seed_42 -> output should match saved expected matrix
+
+_______________________________________________________________________
+| Test Case         |  N | What should happen                         |
+| ----------------- | -: | ------------------------------------------ |
+| Identity          |  4 | Output should equal B                      |
+| Zero              |  4 | Output should be all zeros                 |
+| Ones              |  4 | All output values should be 4              |
+| Mixed signed      |  4 | Output should match expected signed result |
+| Fixed random seed |  4 | Output should match saved expected matrix  |
+| Identity          |  8 | Output should equal B                      |
+| Zero              |  8 | Output should be all zeros                 |
+| Ones              |  8 | All output values should be 8              |
+| Mixed signed      |  8 | Output should match expected signed result |
+| Fixed random seed |  8 | Output should match saved expected matrix  |
+-----------------------------------------------------------------------
+
